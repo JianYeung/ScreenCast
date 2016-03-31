@@ -14,7 +14,7 @@ public class MeLinkService {
     private static MeLinkService meLinkService = null; // singleton
     private static MeLinkManager meLinkManage = null;
     private static ArrayList<Device> mDeviceList = null;
-    private ICallback mICallback = null;
+    private IDeviceCallback mIDeviceCallback = null;
 
 
     private MeLinkService() {
@@ -40,7 +40,7 @@ public class MeLinkService {
         return meLinkManage;
     }
 
-    public void setICallback(ICallback iCallback) {
-        mICallback = iCallback;
+    public void setICallback(IDeviceCallback iDeviceCallback) {
+        mIDeviceCallback = iDeviceCallback;
     }
 }

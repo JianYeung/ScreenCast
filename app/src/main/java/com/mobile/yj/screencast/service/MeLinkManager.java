@@ -18,7 +18,7 @@ public class MeLinkManager {
 
 
     private Context mContext;
-    private AndroidUpnpService upnpService;
+    private AndroidUpnpService upnpService = null;
     private Registry registry = null;
     private ControlPoint controlPoint = null;
 
@@ -28,28 +28,38 @@ public class MeLinkManager {
             upnpService = (AndroidUpnpService) service;
             registry = upnpService.getRegistry();
             controlPoint = upnpService.getControlPoint();
-            Log.d("YJ","sucessful");
+            Log.d("YJ", "sucessful");
         }
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
             upnpService = null;
-            Log.d("YJ","failed");
+            Log.d("YJ", "failed");
         }
     };
 
 
     public MeLinkManager(Context context) {
         mContext = context;
+
+    }
+
+
+    public void connect(){
         mContext.getApplicationContext().bindService(new Intent(mContext, IUpnpService.class), serviceConnection, Context.BIND_AUTO_CREATE);
     }
 
-    public Registry getRegistry()
-    {
-       return registry;
+
+
+    public AndroidUpnpService getUpnpService(){
+        return upnpService;
     }
 
-    public ControlPoint getControlPoint(){
+    public Registry getRegistry() {
+        return registry;
+    }
+
+    public ControlPoint getControlPoint() {
         return controlPoint;
     }
 }
