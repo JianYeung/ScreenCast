@@ -5,7 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    tools:context="com.mobile.yj.screencast.image.ImageActivity">
+    tools:context=".image.SampleActivity">
 
     <ImageView
         android:id="@+id/img"

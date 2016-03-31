@@ -3,12 +3,19 @@ package com.mobile.yj.screencast.image;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
+import android.content.ComponentName;
+import android.content.Context;
 import android.content.DialogInterface;
+import android.content.Intent;
+import android.content.ServiceConnection;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
+import android.net.wifi.WifiInfo;
+import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.IBinder;
 import android.os.Message;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -23,35 +30,41 @@ import android.widget.ListView;
 import android.widget.Toast;
 
 import com.mobile.yj.screencast.R;
-import com.mobile.yj.screencast.callback.ICallback;
-import com.mobile.yj.screencast.callback.IDeviceCallback;
-import com.mobile.yj.screencast.service.MeLinkManager;
+import com.mobile.yj.screencast.service.IUpnpService;
 import com.mobile.yj.screencast.service.MediaServer;
 import com.mobile.yj.screencast.utils.DeviceDisplay;
 
 import org.teleal.cling.android.AndroidUpnpService;
 import org.teleal.cling.controlpoint.ActionCallback;
 import org.teleal.cling.controlpoint.ControlPoint;
+import org.teleal.cling.model.ValidationException;
 import org.teleal.cling.model.action.ActionInvocation;
 import org.teleal.cling.model.message.UpnpResponse;
 import org.teleal.cling.model.meta.Device;
+import org.teleal.cling.model.meta.LocalDevice;
+import org.teleal.cling.model.meta.RemoteDevice;
 import org.teleal.cling.model.meta.Service;
 import org.teleal.cling.model.types.ServiceId;
 import org.teleal.cling.model.types.UDAServiceId;
+import org.teleal.cling.registry.DefaultRegistryListener;
 import org.teleal.cling.registry.Registry;
+import org.teleal.cling.registry.RegistryListener;
 import org.teleal.cling.support.avtransport.callback.Play;
 import org.teleal.cling.support.avtransport.callback.SetAVTransportURI;
+
 import org.teleal.cling.support.connectionmanager.callback.GetProtocolInfo;
 import org.teleal.cling.support.model.ProtocolInfos;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.List;
 
 /**
  * Created by dell on 2016/3/30.
  */
-public class ImageActivity extends Activity implements IDeviceCallback, ICallback {
+public class SampleActivity extends Activity {
 
-    private final String TAG = ImageActivity.class.getSimpleName();
+    private final String TAG = SampleActivity.class.getSimpleName();
 
     private final int LEFT = 0;
     private final int RIGHT = 1;
@@ -59,21 +72,50 @@ public class ImageActivity extends Activity implements IDeviceCallback, ICallbac
     private String s = "AVTransport";
     private String s1 = "ConnectionManager";
 
-    private static MeLinkManager meLinkManager;
-    private MediaServer mediaServer = null;
-    public static AndroidUpnpService upnpService;
-    private static Registry registry = null;
-    private static ControlPoint controlPoint = null;
+    private int mCurrentPosition = 0;
+
+    private List<String> imagePathList = null;
 
     private ImageView mImageView = null;
     private Menu mOptionsMenu = null;
-    private int mCurrentPosition = 0;
-    private List<String> imagePathList = null;
-
     private Dialog listDialog = null;
     private ListView deviceList = null;
     private Device mDevice = null;
     private ArrayAdapter<DeviceDisplay> listAdapter = null;
+
+    private MediaServer mediaServer;
+    private AndroidUpnpService upnpService = null;
+    private Registry registry = null;
+    private ControlPoint controlPoint = null;
+
+    private RegistryListener registryListener = new IRegistryListener();
+
+    private ServiceConnection serviceConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            try {
+                mediaServer = new MediaServer(getLocalIpAddress());
+            } catch (ValidationException e) {
+                e.printStackTrace();
+            } catch (UnknownHostException e) {
+                e.printStackTrace();
+            }
+            upnpService = (AndroidUpnpService) service;
+            registry = upnpService.getRegistry();
+            controlPoint = upnpService.getControlPoint();
+            listAdapter.clear();
+            for (Device device : registry.getDevices()) {
+                ((IRegistryListener) registryListener).deviceAdded(device);
+            }
+            registry.addListener(registryListener);
+            controlPoint.search();
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            upnpService = null;
+        }
+    };
 
 
     private Handler mHandler = new Handler() {
@@ -84,13 +126,13 @@ public class ImageActivity extends Activity implements IDeviceCallback, ICallbac
                     Log.d(TAG, "left message.");
                     mCurrentPosition += 1;
                     mCurrentPosition %= imagePathList.size();
-                    //shareNextPhoto(mCurrentPosition);
+                    shareNextPhoto(mCurrentPosition);
                     break;
                 case RIGHT:
                     Log.d(TAG, "right message.");
                     mCurrentPosition = mCurrentPosition - 1 + imagePathList.size();
                     mCurrentPosition %= imagePathList.size();
-                    // shareNextPhoto(mCurrentPosition);
+                    shareNextPhoto(mCurrentPosition);
                     break;
                 default:
                     return;
@@ -109,19 +151,21 @@ public class ImageActivity extends Activity implements IDeviceCallback, ICallbac
         getActionBar().setDisplayHomeAsUpEnabled(true);
         Bundle mBundle = getIntent().getExtras();
         imagePathList = mBundle.getStringArrayList("imagePathList");
-        Log.d("YJ100", "" + imagePathList.size());
         mCurrentPosition = mBundle.getInt("position");
+        //initData();
         initPhotoView();
-        meLinkManager = MeLinkManager.newMeLinkManager(this);
-        meLinkManager.connect();
-
-        listAdapter = new ArrayAdapter<DeviceDisplay>(this,
-                android.R.layout.simple_list_item_1);
+        initDeviceListView();
     }
 
+   /* public void initData() {
+        Bundle mBundle = getIntent().getExtras();
+        imagePathList = mBundle.getStringArrayList("imagePathList");
+        mCurrentPosition = mBundle.getInt("position");
+    }*/
 
     public void initPhotoView() {
-
+        /*getActionBar().setTitle("我的手机");
+        getActionBar().setDisplayHomeAsUpEnabled(true);*/
         mImageView = (ImageView) findViewById(R.id.img);
         mImageView.setOnTouchListener(new View.OnTouchListener() {
             float beginX = 0, endX = 0;
@@ -149,6 +193,14 @@ public class ImageActivity extends Activity implements IDeviceCallback, ICallbac
         showPhoto(mCurrentPosition);
     }
 
+    public void initDeviceListView() {
+        getApplicationContext().bindService(
+                new Intent(this, IUpnpService.class), serviceConnection,
+                Context.BIND_AUTO_CREATE);
+        listAdapter = new ArrayAdapter<DeviceDisplay>(this,
+                android.R.layout.simple_list_item_1);
+    }
+
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -173,9 +225,44 @@ public class ImageActivity extends Activity implements IDeviceCallback, ICallbac
                 && (registry != null)) {
             registry.removeAllRemoteDevices();
             controlPoint.search();
+
             showDialog();
         }
+
         return true;
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if ((registry != null) && (registry.isPaused())) {
+            registry.resume();
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (registry != null) {
+            registry.pause();
+        }
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        if (registry != null) {
+            registry.pause();
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (registry != null) {
+            registry.removeListener(registryListener);
+        }
+        getApplicationContext().unbindService(serviceConnection);
     }
 
 
@@ -215,14 +302,13 @@ public class ImageActivity extends Activity implements IDeviceCallback, ICallbac
                 Device device = devicePlay.getDevice();
                 mDevice = device;
                 // sharePhoto(mCurrentPosition);
-                Log.d("YJ!", mDevice + "");
+                Log.d("YJ!", device + "");
                 Log.d("YJ1", "" + mCurrentPosition);
                 sharePhoto(mCurrentPosition);
                 listDialog.dismiss();
             }
         });
     }
-
 
     public void showPhoto(int currentPosition) {
         String path = imagePathList.get(currentPosition);
@@ -240,7 +326,20 @@ public class ImageActivity extends Activity implements IDeviceCallback, ICallbac
     }
 
     public void sharePhoto(int currentPosition) {
-        String url = "http://" + mediaServer.getAddress() + imagePathList.get(currentPosition);
+
+        String url = "http://" + mediaServer.getAddress()
+                + imagePathList.get(currentPosition);
+        Log.e("URL", url);
+        Uri.parse(url);
+        GetInfo(mDevice);
+        executeAVTransportURI(mDevice, url);
+        executePlay(mDevice);
+    }
+
+    public void shareNextPhoto(int currentPosition) {
+
+        String url = "http://" + mediaServer.getAddress()
+                + imagePathList.get(currentPosition);
         Log.e("URL", url);
         Uri.parse(url);
         GetInfo(mDevice);
@@ -263,6 +362,7 @@ public class ImageActivity extends Activity implements IDeviceCallback, ICallbac
 
         };
         controlPoint.execute(callback);
+
     }
 
     public void executePlay(Device device) {
@@ -277,7 +377,9 @@ public class ImageActivity extends Activity implements IDeviceCallback, ICallbac
             }
 
         };
+
         controlPoint.execute(playcallback);
+
     }
 
 
@@ -304,89 +406,73 @@ public class ImageActivity extends Activity implements IDeviceCallback, ICallbac
         controlPoint.execute(getInfocallback);
     }
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-        if ((registry != null) && (registry.isPaused())) {
-            registry.resume();
-        }
+    private InetAddress getLocalIpAddress() throws UnknownHostException {
+        WifiManager wifiManager = (WifiManager) getSystemService(WIFI_SERVICE);
+        WifiInfo wifiInfo = wifiManager.getConnectionInfo();
+        int ipAddress = wifiInfo.getIpAddress();
+        return InetAddress.getByName(String.format("%d.%d.%d.%d",
+                (ipAddress & 0xff), (ipAddress >> 8 & 0xff),
+                (ipAddress >> 16 & 0xff), (ipAddress >> 24 & 0xff)));
     }
 
-    @Override
-    protected void onPause() {
-        super.onPause();
-        if (registry != null) {
-            registry.pause();
+    class IRegistryListener extends DefaultRegistryListener {
+
+        @Override
+        public void remoteDeviceDiscoveryStarted(Registry registry, RemoteDevice device) {
+            deviceAdded(device);
         }
-    }
 
-    @Override
-    protected void onStop() {
-        super.onStop();
-        if (registry != null) {
-            registry.pause();
+        @Override
+        public void remoteDeviceDiscoveryFailed(Registry registry, final RemoteDevice device, final Exception ex) {
+
+            deviceRemoved(device);
         }
-    }
 
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        if (registry != null) {
-            meLinkManager.destroy(registry);
+        @Override
+        public void remoteDeviceAdded(Registry registry, RemoteDevice device) {
+            deviceAdded(device);
         }
-        meLinkManager.disconnect();
-    }
 
+        @Override
+        public void remoteDeviceRemoved(Registry registry, RemoteDevice device) {
+            deviceRemoved(device);
+        }
 
-    @Override
-    public void addDevice(final Device device) {
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                DeviceDisplay d = new DeviceDisplay(device);
-                int position = listAdapter.getPosition(d);
-                if (position >= 0) {
-                    listAdapter.remove(d);
-                    listAdapter.insert(d, position);
-                } else {
-                    listAdapter.add(d);
+        @Override
+        public void localDeviceAdded(Registry registry, LocalDevice device) {
+            deviceAdded(device);
+        }
+
+        @Override
+        public void localDeviceRemoved(Registry registry, LocalDevice device) {
+            deviceRemoved(device);
+        }
+
+        @SuppressWarnings("rawtypes")
+        public void deviceAdded(final Device device) {
+            runOnUiThread(new Runnable() {
+                public void run() {
+                    DeviceDisplay d = new DeviceDisplay(device);
+                    int position = listAdapter.getPosition(d);
+                    if (position >= 0) {
+                        listAdapter.remove(d);
+                        listAdapter.insert(d, position);
+                    } else {
+                        listAdapter.add(d);
+                    }
+                    listAdapter.notifyDataSetChanged();
                 }
-                listAdapter.notifyDataSetChanged();
-            }
-        });
+            });
+        }
+
+        @SuppressWarnings("rawtypes")
+        public void deviceRemoved(final Device device) {
+            runOnUiThread(new Runnable() {
+                public void run() {
+                    listAdapter.remove(new DeviceDisplay(device));
+                }
+            });
+        }
     }
 
-    @Override
-    public void deleteDevice(final Device device) {
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                listAdapter.remove(new DeviceDisplay(device));
-            }
-        });
-    }
-
-    @Override
-    public void clearList() {
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                listAdapter.clear();
-            }
-        });
-    }
-
-
-    @Override
-    public void setUpnpService(final AndroidUpnpService upnpService) {
-        this.upnpService = upnpService;
-        this.registry = upnpService.getRegistry();
-        this.controlPoint = upnpService.getControlPoint();
-    }
-
-    @Override
-    public void setMediaServer(final MediaServer mediaServer) {
-        this.mediaServer = mediaServer;
-        Log.d("YJ111", mediaServer.getAddress());
-    }
 }

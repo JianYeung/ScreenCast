@@ -30,7 +30,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".image.ImageActivity"
+        <activity
+            android:name=".image.SampleActivity"
+            android:theme="@style/AppTheme.AppBarOverlay"></activity>
+
+        <activity
+            android:name=".image.ImageActivity"
             android:theme="@style/AppTheme.AppBarOverlay"></activity>
 
         <service android:name=".service.IUpnpService"></service>
