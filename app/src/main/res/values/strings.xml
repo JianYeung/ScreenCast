@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">ScreenCast</string>
+    <string name="action_settings">Settings</string>
+    <string name="imageTabName">图片</string>
+    <string name="audioTabName">音乐</string>
+    <string name="videoTabName">视频</string>
+    <string name="push">推送</string>
+    <string name="startSlide">开始幻灯片播放</string>
+</resources>
