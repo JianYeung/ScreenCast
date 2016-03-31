@@ -1,6 +1,6 @@
 package com.mobile.yj.screencast.callback;
 
-import com.mobile.yj.screencast.service.MediaServer;
+import com.mobile.yj.screencast.server.MediaServer;
 
 import org.teleal.cling.android.AndroidUpnpService;
 

@@ -1,4 +1,4 @@
-package com.mobile.yj.screencast.service;
+package com.mobile.yj.screencast.server;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
@@ -188,7 +188,7 @@ public class HttpServer {
      * Starts a HTTP server to given port.<p>
      * Throws an IOException if the socket is already in use
      */
-    public HttpServer( int port ) throws IOException
+    public HttpServer(int port) throws IOException
     {
         myTcpPort = port;
         this.myRootDir = new File("/");

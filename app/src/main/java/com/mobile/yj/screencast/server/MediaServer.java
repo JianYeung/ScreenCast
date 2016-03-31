@@ -1,4 +1,4 @@
-package com.mobile.yj.screencast.service;
+package com.mobile.yj.screencast.server;
 
 import android.util.Log;
 

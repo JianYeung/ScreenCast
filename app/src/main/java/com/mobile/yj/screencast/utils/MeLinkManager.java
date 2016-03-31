@@ -1,4 +1,4 @@
-package com.mobile.yj.screencast.service;
+package com.mobile.yj.screencast.utils;
 
 import android.content.ComponentName;
 import android.content.Context;
@@ -11,6 +11,8 @@ import android.util.Log;
 
 import com.mobile.yj.screencast.callback.ICallback;
 import com.mobile.yj.screencast.callback.IDeviceCallback;
+import com.mobile.yj.screencast.server.MediaServer;
+import com.mobile.yj.screencast.service.IUpnpService;
 
 import org.teleal.cling.android.AndroidUpnpService;
 import org.teleal.cling.controlpoint.ControlPoint;

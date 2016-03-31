@@ -31,7 +31,6 @@ import android.widget.Toast;
 
 import com.mobile.yj.screencast.R;
 import com.mobile.yj.screencast.service.IUpnpService;
-import com.mobile.yj.screencast.service.MediaServer;
 import com.mobile.yj.screencast.utils.DeviceDisplay;
 
 import org.teleal.cling.android.AndroidUpnpService;
