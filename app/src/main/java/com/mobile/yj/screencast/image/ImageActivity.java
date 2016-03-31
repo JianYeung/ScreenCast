@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
@@ -25,6 +26,7 @@ import android.widget.Toast;
 import com.mobile.yj.screencast.R;
 import com.mobile.yj.screencast.callback.ICallback;
 import com.mobile.yj.screencast.callback.IDeviceCallback;
+import com.mobile.yj.screencast.service.IUpnpService;
 import com.mobile.yj.screencast.service.MeLinkManager;
 import com.mobile.yj.screencast.service.MediaServer;
 import com.mobile.yj.screencast.utils.DeviceDisplay;
@@ -60,19 +62,19 @@ public class ImageActivity extends Activity implements IDeviceCallback, ICallbac
     private String s1 = "ConnectionManager";
 
     private static MeLinkManager meLinkManager;
-    private MediaServer mediaServer = null;
-    public static AndroidUpnpService upnpService;
+    private static MediaServer mediaServer = null;
+    private static AndroidUpnpService upnpService;
     private static Registry registry = null;
     private static ControlPoint controlPoint = null;
 
     private ImageView mImageView = null;
     private Menu mOptionsMenu = null;
-    private int mCurrentPosition = 0;
-    private List<String> imagePathList = null;
+    private static int mCurrentPosition = 0;
+    private static List<String> imagePathList = null;
 
     private Dialog listDialog = null;
     private ListView deviceList = null;
-    private Device mDevice = null;
+    private static Device mDevice = null;
     private ArrayAdapter<DeviceDisplay> listAdapter = null;
 
 
@@ -112,9 +114,10 @@ public class ImageActivity extends Activity implements IDeviceCallback, ICallbac
         Log.d("YJ100", "" + imagePathList.size());
         mCurrentPosition = mBundle.getInt("position");
         initPhotoView();
-        meLinkManager = MeLinkManager.newMeLinkManager(this);
-        meLinkManager.connect();
-
+        if (upnpService == null) {
+            meLinkManager = MeLinkManager.newMeLinkManager(this);
+            meLinkManager.connect();
+        }
         listAdapter = new ArrayAdapter<DeviceDisplay>(this,
                 android.R.layout.simple_list_item_1);
     }
@@ -309,7 +312,9 @@ public class ImageActivity extends Activity implements IDeviceCallback, ICallbac
         super.onResume();
         if ((registry != null) && (registry.isPaused())) {
             registry.resume();
+            Log.d("ILY", "resume");
         }
+
     }
 
     @Override
@@ -317,7 +322,9 @@ public class ImageActivity extends Activity implements IDeviceCallback, ICallbac
         super.onPause();
         if (registry != null) {
             registry.pause();
+            Log.d("ILY", "pause");
         }
+
     }
 
     @Override
@@ -325,7 +332,9 @@ public class ImageActivity extends Activity implements IDeviceCallback, ICallbac
         super.onStop();
         if (registry != null) {
             registry.pause();
+            Log.d("ILY", "stop");
         }
+
     }
 
     @Override
@@ -333,8 +342,11 @@ public class ImageActivity extends Activity implements IDeviceCallback, ICallbac
         super.onDestroy();
         if (registry != null) {
             meLinkManager.destroy(registry);
+            upnpService = null;
+            Log.d("ILY", "destroy");
         }
         meLinkManager.disconnect();
+        finish();
     }
 
 
@@ -380,8 +392,13 @@ public class ImageActivity extends Activity implements IDeviceCallback, ICallbac
     @Override
     public void setUpnpService(final AndroidUpnpService upnpService) {
         this.upnpService = upnpService;
-        this.registry = upnpService.getRegistry();
-        this.controlPoint = upnpService.getControlPoint();
+        if (upnpService == null) {
+            registry = null;
+            controlPoint = null;
+        } else {
+            this.registry = upnpService.getRegistry();
+            this.controlPoint = upnpService.getControlPoint();
+        }
     }
 
     @Override

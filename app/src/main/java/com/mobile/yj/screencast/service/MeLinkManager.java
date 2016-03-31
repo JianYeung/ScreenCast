@@ -73,7 +73,8 @@ public class MeLinkManager {
         @Override
         public void onServiceDisconnected(ComponentName name) {
             upnpService = null;
-
+            mICallback.setUpnpService(upnpService);
+            mIDeviceCallback.clearList();
             Log.d("YJ", "failed");
         }
     };
@@ -105,10 +106,12 @@ public class MeLinkManager {
 
     public void destroy(final Registry registry) {
         registry.removeListener(registryListener);
+        mediaServer.getHttpServer().stop();
     }
 
     public void disconnect() {
         mContext.getApplicationContext().unbindService(serviceConnection);
+        Log.d("ILY","disconnect");
     }
 
     public static void setICallback(ICallback iCallback) {

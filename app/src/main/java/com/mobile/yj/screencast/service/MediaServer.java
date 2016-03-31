@@ -22,6 +22,7 @@ public class MediaServer {
     private final static int version = 1;
     private final static String LOGTAG = "GNaP-MediaServer";
     private final static int port = 8192;
+    private static HttpServer httpServer;
     private static InetAddress localAddress;
 
     public MediaServer(InetAddress localAddress) throws ValidationException {
@@ -32,7 +33,7 @@ public class MediaServer {
                 new ModelDetails("GNaP", "GNaP MediaServer for Android", "v1"));
 
 	/*	LocalService service = new AnnotationLocalServiceBinder()
-				.read(ContentDirectoryService.class);
+                .read(ContentDirectoryService.class);
 
 		service.setManager(new DefaultServiceManager<ContentDirectoryService>(
 				service, ContentDirectoryService.class));
@@ -49,12 +50,10 @@ public class MediaServer {
 
         //start http server
         try {
-            new HttpServer(port);
-        }
-        catch (IOException ioe )
-        {
-            System.err.println( "Couldn't start server:\n" + ioe );
-            System.exit( -1 );
+            httpServer = new HttpServer(port);
+        } catch (IOException ioe) {
+            System.err.println("Couldn't start server:\n" + ioe);
+            System.exit(-1);
         }
 
         Log.v(LOGTAG, "Started Http Server on port " + port);
@@ -66,5 +65,9 @@ public class MediaServer {
 
     public String getAddress() {
         return localAddress.getHostAddress() + ":" + port;
+    }
+
+    public HttpServer getHttpServer() {
+        return httpServer;
     }
 }
